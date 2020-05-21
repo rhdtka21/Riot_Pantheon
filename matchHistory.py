@@ -5,6 +5,35 @@ import time
 import telegram
 from collections import deque
 from copy import deepcopy
+from bs4 import BeautifulSoup
+import requests
+import re
+import sys
+
+ver1, ver2 = 10, 9
+championId = {}
+
+def championId_crawl():
+  def returnNumber(text):
+    han = re.findall(u'[\u0030-\u0039]+', text)
+    return int(''.join(han))
+
+  def returnHangul(text):
+    han = re.findall(u'[\u3130-\u318F\uAC00-\uD7A3]+', text)
+    return ''.join(han)
+
+  champ_url = 'http://ddragon.leagueoflegends.com/cdn/{}.{}.1/data/ko_KR/champion.json'.format(ver1, ver2)
+  req = requests.get(champ_url)
+  html = req.text
+  soup = BeautifulSoup(html, 'html.parser').text
+
+  for a in re.finditer('\"key\"', soup):
+    idx = a.start()
+    keyIdx = idx+6
+    keyNumber = returnNumber(soup[keyIdx:keyIdx+20])
+    NameIdx = keyIdx + 6
+    championName = returnHangul(soup[NameIdx:NameIdx+20])
+    championId[keyNumber] = championName
 
 server = "kr"
 api_key = "---your_api_key---"
@@ -83,7 +112,7 @@ def matchInfoSend(accountId, latestGameId):
   
   myInfoData['killInvolve'] = str(int((myInfo['stats']['kills'] + myInfo['stats']['assists'])/teamKills * 100))
   myInfoData['time'] = '{}분 {}초'.format(data['gameDuration'] // 60, data['gameDuration'] % 60) 
-  myInfoData['champion'] = myInfo['championId']
+  myInfoData['champion'] = championId[myInfo['championId']]
   myInfoData['kda'] = '{}/{}/{}'.format(myInfo['stats']['kills'], myInfo['stats']['deaths'], myInfo['stats']['assists'])
   if myInfo['stats']['deaths'] == 0:
     ratio = 'Perfect'
@@ -119,7 +148,7 @@ def matchInfoSend(accountId, latestGameId):
     xp = round(xpTuple[1], 2)
     myInfoData['expTimeLine'] += '%10s' % str(xp)
   
-  message = '⚔Match Analysis⚔\n\n'
+  message = '⚔Match Analysis⚔\n'
   message += myInfoData['win'] + '\n'
   message += name + '\n'
   message += myInfoData['time'] + ' 킬관여' + myInfoData['killInvolve'] +'%\n'
@@ -142,6 +171,7 @@ if __name__ == '__main__':
   panth = pantheon.Pantheon(server, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
   loop = asyncio.get_event_loop()  
   summonerId, accountId = loop.run_until_complete(getSummonerId(name))
+  championId_crawl()
 
   while True:
     getLastMatchInfo(accountId)
