@@ -31,8 +31,8 @@ def championId_crawl():
     idx = a.start()
     keyIdx = idx+6
     keyNumber = returnNumber(soup[keyIdx:keyIdx+20])
-    NameIdx = keyIdx + 6
-    championName = returnHangul(soup[NameIdx:NameIdx+20])
+    nameIdx = keyIdx + 6
+    championName = returnHangul(soup[nameIdx:nameIdx+20])
     championId[keyNumber] = championName
 
 server = "kr"
