@@ -3,6 +3,7 @@ import asyncio
 import pandas as pd
 import time
 import telegram
+from datetime import datetime
 from collections import deque
 from copy import deepcopy
 from bs4 import BeautifulSoup
@@ -121,7 +122,6 @@ def matchInfoSend(accountId, latestGameId):
   myInfoData['ratio'] = ratio
   myInfoData['win'] = '🎖승리🎖' if myInfo['stats']['win'] else '😪패배😪'
   myInfoData['MultiKill'] = multiKillString[myInfo['stats']['largestMultiKill']] if myInfo['stats']['largestMultiKill'] >= 2 else None
-  myInfoData['lane'] = myInfo['timeline']['lane']
   myInfoData['totalDamage'] = myInfo['stats']['totalDamageDealtToChampions']
   myInfoData['totalGold'] = myInfo['stats']['goldEarned']
 
@@ -148,11 +148,10 @@ def matchInfoSend(accountId, latestGameId):
     xp = round(xpTuple[1], 2)
     myInfoData['expTimeLine'] += '%10s' % str(xp)
   
-  message = '⚔Match Analysis⚔\n'
-  message += myInfoData['win'] + '\n'
+  message = myInfoData['win'] + '\n'
   message += name + '\n'
-  message += myInfoData['time'] + ' 킬관여' + myInfoData['killInvolve'] +'%\n'
-  message += '{} {}\n'.format(myInfoData['champion'], myInfoData['lane'])
+  message += myInfoData['time'] + ' 킬관여 ' + myInfoData['killInvolve'] +'%\n'
+  message += '{}\n'.format(myInfoData['champion'])
   message += '{} {}:1 평점\n'.format(myInfoData['kda'], myInfoData['ratio'])
   if myInfoData['MultiKill'] is not None:
     message += '{}\n'.format(myInfoData['MultiKill'])
@@ -165,15 +164,48 @@ def matchInfoSend(accountId, latestGameId):
   time.sleep(10)
 
 
-name = "zxcx"
+def test_league_entries_by_summonerId(accountId):
+  try:
+    data = loop.run_until_complete(panth.getLeaguePosition(summonerId))
+    sendTier(data)
+  except Exception as e:
+    print(e)
+  assert type(data) == list
+
+def sendTier(data):
+  messages = ['', '']
+  for d in data:
+    tierInfo = {}
+    idx = 0 if d['queueType'] == 'RANKED_SOLO_5x5' else 1
+    tierInfo['tier'] = d['tier']
+    tierInfo['rank'] = d['rank']
+    tierInfo['point'] = d['leaguePoints']
+    tierInfo['wins'] = d['wins']
+    tierInfo['losses'] = d['losses']
+    tierInfo['ratio'] = round(d['wins'] / (d['wins'] + d['losses']), 2) * 100
+
+    messages[idx] = '🗡솔로랭크🗡\n' if d['queueType'] == 'RANKED_SOLO_5x5' else '⚔자유랭크⚔\n'
+    messages[idx] += '{} {} {} LP\n'.format(tierInfo['tier'], tierInfo['rank'], tierInfo['point'])
+    messages[idx] += '{}승 {}패 승률 : {}%'.format(tierInfo['wins'], tierInfo['losses'], tierInfo['ratio'])
+    #print(messages[idx])
+
+  message = messages[0] + '\n\n' + messages[1]
+  bot.sendMessage(LOLALARMCHANNEL, message)
+  time.sleep(10)
+
+
+name = "Hide On Bush"
 if __name__ == '__main__':
 
   panth = pantheon.Pantheon(server, api_key, errorHandling=True, requestsLoggingFunction=requestsLog, debug=True)
   loop = asyncio.get_event_loop()  
   summonerId, accountId = loop.run_until_complete(getSummonerId(name))
   championId_crawl()
-
+  now = datetime.now()
+  test_league_entries_by_summonerId(accountId)
+    
   while True:
+    nowHour =  now.hour
+    if nowHour == 16:
+      test_league_entries_by_summonerId(accountId)
     getLastMatchInfo(accountId)
-    
-    
