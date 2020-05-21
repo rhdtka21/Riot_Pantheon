@@ -206,6 +206,6 @@ if __name__ == '__main__':
     
   while True:
     nowHour =  now.hour
-    if nowHour == 16:
+    if nowHour == 16:   ##KST 0
       test_league_entries_by_summonerId(accountId)
     getLastMatchInfo(accountId)
